@@ -1,21 +1,23 @@
 //SPDX-License-Identifier: MIT
-// hi this is a test
 
 pragma solidity >=0.7.0 <0.9.0;
 
 contract girlScoutCookieSale {
     
     //define an enumeration that defines the possible states of the contract
-    enum State {Created, Locked, Release, Inactive}
+    enum State {Created, Ordered, Locked, Release, Inactive}
     
     State public state;
     uint public value;
+    uint public price;
+    uint public refund;
     address payable public girlscout;
     address payable public buyer;
     event Aborted();
     event PurchaseConfirmed();
     event CookiesReceived();
     event GirlScoutRefunded();
+    event CartCreated();
     
     modifier onlyBuyer() {
         if(msg.sender != buyer)
@@ -35,13 +37,14 @@ contract girlScoutCookieSale {
         _;
     }
     
+    //make the girlscout the seller address and set the price for a box of cookies
     constructor() payable {
         girlscout = payable(msg.sender);
-        value = msg.value / 2;
-        if((value * 2) != msg.value)
-            revert("Invalid value provided. Submit double the value (even number).");
+        price = msg.value / 2;
+        if ((price * 2) != msg.value)
+            revert("Invalid price provided. Submit double the value (even number).");
     }
-    
+
     //abort the purchase and reclaim the ether (verifying the contract isn't locked)
     function abort() public onlyGirlScout inState(State.Created) {
         state = State.Inactive;
@@ -49,16 +52,27 @@ contract girlScoutCookieSale {
         emit Aborted();
     }
     
-    //confirm the purchase for buyer, 2x value given, contract is locked
-    function confirmPurchase() public payable inState(State.Created) {
-        require(msg.value == (2 * value), "Not enough deposited.");
-        emit PurchaseConfirmed();
+    //create the cart by entering a number of boxes for the buyer, then calculating value
+    //require that the msg.sender is not the girlscout
+    function createCart(uint numBoxes) public inState(State.Created) {
+        require(msg.sender != girlscout, "Buyer cannot be seller.");
+        value = numBoxes * price;
         buyer = payable(msg.sender);
+        state = State.Ordered;
+        emit CartCreated();
+    }
+    
+    //confirm the payment is 2x the value to avoid odd numbers
+    //then confirm the purchase and set the buyer as the msg.sender
+    function confirmPurchase() public payable onlyBuyer inState(State.Ordered) {
+        require(msg.value == (2 * value), "Not enough deposited; it should be 2x value.");
+        emit PurchaseConfirmed();
         state = State.Locked;
     }
     
     //confirm the cookies have been received, after verifying the contract is Locked
     //and that the buyer is calling this function
+    //then transfer the buyer back the value
     function confirmReceived() public onlyBuyer inState(State.Locked) {
         emit CookiesReceived();
         //change state first to prevent re-entry
@@ -66,12 +80,13 @@ contract girlScoutCookieSale {
         buyer.transfer(value);
     }
     
-    //return the initial investment plus the price of the cookies to the girl scout
-    function refundSeller() public onlyGirlScout inState(State.Release) {
+    //return price entered into the contract plus the value to the girl scout
+    function completeTransaction() public onlyGirlScout inState(State.Release) {
         emit GirlScoutRefunded();
         //change state first to prevent re-entry
         state = State.Inactive;
-        girlscout.transfer(3 * value);
+        refund = (2 * price) + value;
+        girlscout.transfer(refund);
     }
     
 }
