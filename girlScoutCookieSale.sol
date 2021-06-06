@@ -11,6 +11,7 @@ contract girlScoutCookieSale {
     uint public value;
     uint public price;
     uint public refund;
+    uint public expiration_date;
     address payable public girlscout;
     address payable public buyer;
     event Aborted();
@@ -38,7 +39,9 @@ contract girlScoutCookieSale {
     }
     
     //make the girlscout the seller address and set the price for a box of cookies
-    constructor() payable {
+    constructor(uint _expdate) payable {
+        require(_expdate * 86400 > 604800, "Cookie must last at least a week.");
+        expiration_date = block.timestamp + _expdate * 86400;
         girlscout = payable(msg.sender);
         price = msg.value / 2;
         if ((price * 2) != msg.value)
@@ -66,6 +69,8 @@ contract girlScoutCookieSale {
     //then confirm the purchase and set the buyer as the msg.sender
     function confirmPurchase() public payable onlyBuyer inState(State.Ordered) {
         require(msg.value == (2 * value), "Not enough deposited; it should be 2x value.");
+        if(block.timestamp > expiration_date)
+            revert("Oops! Cookies are staled! Next cookies would be here soon.");
         emit PurchaseConfirmed();
         state = State.Locked;
     }
