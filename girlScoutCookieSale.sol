@@ -4,8 +4,19 @@ pragma solidity >=0.7.0 <0.9.0;
 
 contract girlScoutCookieSale {
     
+    struct inventory {
+        string sku; //identifier unique to cookie box
+        string itemName; 
+        string itemDescription;
+        uint qty; //available quantity
+    }
+    
     //define an enumeration that defines the possible states of the contract
     enum State {Created, Ordered, Locked, Release, Inactive}
+    
+    //Events
+    event CallGirlScout(string sku, uint qty, address buyer);
+    event ShipOrder(string sku, uint qty, address buyer);
     
     State public state;
     uint public value;
@@ -43,7 +54,7 @@ contract girlScoutCookieSale {
         require(_expdate * 86400 > 604800, "Cookie must last at least a week.");
         expiration_date = block.timestamp + _expdate * 86400;
         girlscout = payable(msg.sender);
-        price = msg.value / 2;
+        price = 0.005 ether; //set price of cookies 
         if ((price * 2) != msg.value)
             revert("Invalid price provided. Submit double the value (even number).");
     }
