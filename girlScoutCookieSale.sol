@@ -12,6 +12,9 @@ contract girlScoutCookieSale {
 
     //define an enumeration that defines the possible states of the contract
     enum State {Created, Ordered, Locked, Release, Inactive}
+    
+    //keep track of inventory information in order
+    mapping(bytes32 => inventory) cart;
 
     //Events
     event CallGirlScout(string sku, uint qty, address buyer);
