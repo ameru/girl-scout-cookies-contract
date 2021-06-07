@@ -1,1 +1,0 @@
-# girl-scout-cookies-smart-contract
